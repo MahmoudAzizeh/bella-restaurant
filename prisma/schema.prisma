@@ -1,0 +1,44 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Food {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  category    String      @default("Main")
+  available   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerName    String
+  customerPhone   String
+  customerAddress String
+  total           Float
+  status          String      @default("pending")
+  createdAt       DateTime    @default(now())
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  quantity Int
+  price    Float
+  foodId   String
+  orderId  String
+
+  food  Food  @relation(fields: [foodId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
