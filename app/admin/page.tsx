@@ -7,6 +7,8 @@ import {
 } from "@/lib/auth";
 import AdminDashboardClient from "./AdminDashboardClient";
 
+export const instant = false;
+
 export default async function AdminPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(cookieName)?.value;

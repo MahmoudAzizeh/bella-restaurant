@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate --config prisma7.config.ts && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -12,7 +12,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "jose": "^6.2.13",
-    "next": "16.4.0",
+    "next": "^16.4.3",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"

@@ -7,6 +7,8 @@ import {
 } from "@/lib/auth";
 import FoodsManagementClient from "./FoodsManagementClient";
 
+export const instant = false;
+
 export default async function AdminFoodsPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(cookieName)?.value;
