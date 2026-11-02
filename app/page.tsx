@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Food = {
   id: string;
@@ -18,6 +19,13 @@ type OrderResponse = {
   id?: string;
   total?: number;
   error?: string;
+};
+
+type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "CUSTOMER" | "ADMIN";
 };
 
 const fallbackImages: Record<string, string> = {
@@ -44,6 +52,62 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const [foodError, setFoodError] = useState("");
 
+  // Authentication state
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Load logged-in user
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Loading user failed:", error);
+        setUser(null);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    }
+
+    loadUser();
+  }, []);
+
+  // Logout
+  async function handleLogout() {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+
+      setUser(null);
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Could not logout. Please try again.");
+      setIsLoggingOut(false);
+    }
+  }
+
+  // Load menu foods
   useEffect(() => {
     async function loadFoods() {
       try {
@@ -196,7 +260,7 @@ Total: $${savedTotal.toFixed(2)}`;
 
   return (
     <main className="min-h-screen bg-[#fffaf3] text-[#29231f]">
-      <nav className="flex items-center justify-between border-b border-orange-100 bg-white px-6 py-5 md:px-12">
+      <nav className="flex flex-wrap items-center justify-between gap-4 border-b border-orange-100 bg-white px-6 py-5 md:px-12">
         <a href="#home" className="text-2xl font-black text-orange-600">
           Bella<span className="text-stone-800">.</span>
         </a>
@@ -208,12 +272,58 @@ Total: $${savedTotal.toFixed(2)}`;
           <a href="#checkout" className="hover:text-orange-600">Checkout</a>
         </div>
 
-        <a
-          href="#cart"
-          className="rounded-full bg-orange-600 px-5 py-3 text-sm font-bold text-white hover:bg-orange-700"
-        >
-          🛒 Cart ({cartCount})
-        </a>
+        <div className="flex flex-wrap items-center gap-3">
+          {isAuthLoading ? (
+            <span className="text-sm text-stone-400">Loading...</span>
+          ) : user ? (
+            <>
+              <span className="text-sm font-semibold text-stone-700">
+                Hi, {user.name}
+              </span>
+
+              {user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="rounded-full border border-orange-200 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-50"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="rounded-full bg-stone-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-stone-700 disabled:opacity-60"
+              >
+                {isLoggingOut ? "Logging out..." : "Logout"}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-full border border-orange-200 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-50"
+              >
+                Login
+              </Link>
+
+              <Link
+                href="/register"
+                className="rounded-full bg-orange-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-700"
+              >
+                Register
+              </Link>
+            </>
+          )}
+
+          <a
+            href="#cart"
+            className="rounded-full bg-orange-600 px-5 py-3 text-sm font-bold text-white hover:bg-orange-700"
+          >
+            🛒 Cart ({cartCount})
+          </a>
+        </div>
       </nav>
 
       <section

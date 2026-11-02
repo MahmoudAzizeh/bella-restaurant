@@ -1,48 +1,80 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createAdminSession, cookieName } from "@/lib/auth";
+import { compare } from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+import { createSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const body = await request.json();
+    const { email, password } = body;
 
-    if (!adminPassword) {
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
       return NextResponse.json(
-        { error: "Admin login is not configured" },
-        { status: 500 }
+        { message: "Email and password are required" },
+        { status: 400 }
       );
     }
 
-    const body = await request.json();
+    const normalizedEmail = email.trim().toLowerCase();
 
-    if (
-      typeof body.password !== "string" ||
-      body.password !== adminPassword
-    ) {
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
       return NextResponse.json(
-        { error: "Incorrect password" },
+        { message: "Invalid email or password" },
         { status: 401 }
       );
     }
 
-    const token = await createAdminSession();
-    const cookieStore = await cookies();
+    const isPasswordValid = await compare(
+      password,
+      user.passwordHash
+    );
 
-    cookieStore.set(cookieName, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 60 * 2,
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { message: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    const token = await createSession({
+      id: user.id,
+      role: user.role,
     });
 
-    return NextResponse.json({ success: true });
+    const response = NextResponse.json({
+      message: "Login successful",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+
+    response.cookies.set("bella_session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return response;
   } catch (error) {
-    console.error("Admin login error:", error);
+    console.error("Login error:", error);
 
     return NextResponse.json(
-      { error: "Unable to log in" },
+      { message: "Something went wrong" },
       { status: 500 }
     );
   }
